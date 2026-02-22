@@ -28,13 +28,11 @@ def get_dictionary_chain(llm):
 def get_llm(model_name="llama3.2"):
     return ChatOllama(model=model_name)
 
-def get_ai_response(user_question):
-    # 1. 환경 변수 로드
+def get_retriever():
     load_dotenv()
     pinecone_api_key = os.environ.get("PINECONE_API_KEY")
-    os.environ["PINECONE_API_KEY"] = pinecone_api_key
-
-    # 2. Vector DB 연결
+    
+    # Vector DB 연결
     embedding = OllamaEmbeddings(model="nomic-embed-text")
     index_name = "tax-markdown-index"
 
@@ -44,10 +42,13 @@ def get_ai_response(user_question):
         index_name=index_name,
         embedding=embedding
     )
+    return database.as_retriever()
 
-    # 3. LLM 및 프롬프트 설정
+def get_ai_response(user_question):
+    # 1. Retriever 및 LLM 설정
+    retriever = get_retriever()
     llm = get_llm()
-    
+
     # 변환 체인 가져오기
     dictionary_chain = get_dictionary_chain(llm)
 
@@ -75,7 +76,7 @@ def get_ai_response(user_question):
 
     full_chain = (
         {
-            "context": dictionary_chain | database.as_retriever() | format_docs, 
+            "context": dictionary_chain | retriever | format_docs, 
             "question": RunnablePassthrough()
         }
         | custom_prompt 
