@@ -44,14 +44,7 @@ def get_retriever():
     )
     return database.as_retriever()
 
-def get_ai_response(user_question):
-    # 1. Retriever 및 LLM 설정
-    retriever = get_retriever()
-    llm = get_llm()
-
-    # 변환 체인 가져오기
-    dictionary_chain = get_dictionary_chain(llm)
-
+def get_qa_chain(llm):
     # [B] 세무 전문가 페르소나 RAG 프롬프트
     custom_prompt = ChatPromptTemplate.from_template("""
         당신은 한국의 소득세 전문가입니다. 다음에 제공된 [관련 법령/문서] 내용만을 근거로 사용자의 [질문]에 답변하세요.
@@ -68,6 +61,16 @@ def get_ai_response(user_question):
         
         [답변]:
     """)
+    return custom_prompt | llm | StrOutputParser()
+
+def get_ai_response(user_question):
+    # 1. Retriever 및 LLM 설정
+    retriever = get_retriever()
+    llm = get_llm()
+
+    # 변환 체인 및 QA 체인 가져오기
+    dictionary_chain = get_dictionary_chain(llm)
+    qa_chain = get_qa_chain(llm)
 
     # 4. LCEL 체인 구성 (Pipeline)
     
@@ -79,9 +82,7 @@ def get_ai_response(user_question):
             "context": dictionary_chain | retriever | format_docs, 
             "question": RunnablePassthrough()
         }
-        | custom_prompt 
-        | llm 
-        | StrOutputParser()
+        | qa_chain
     )
 
     # 5. 실행
