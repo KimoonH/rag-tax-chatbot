@@ -1,5 +1,7 @@
 import streamlit as st
 from llm import get_ai_response
+from langchain_core.messages import HumanMessage, AIMessage
+
 # 페이지 컴픽
 
 st.set_page_config(page_title="소득세 챗봇", page_icon="💰")
@@ -22,9 +24,17 @@ if user_question := st.chat_input(placeholder="소득세에 관련된 궁금한 
     # 여기서 다시 그려준다.
     st.session_state.message_list.append({"role": "user", "content": user_question})
 
+    # 대화 기록 포맷팅 (리스트 기반)
+    chat_history = []
+    for message in st.session_state.message_list[:-1]: # 마지막 질문 제외한 이전 기록
+        if message["role"] == "user":
+            chat_history.append(HumanMessage(content=message["content"]))
+        elif message["role"] == "ai":
+            chat_history.append(AIMessage(content=message["content"]))
+
     with st.chat_message("ai"):
         with st.status("답변을 생성 중입니다...", expanded=True) as status:
-            ai_message = get_ai_response(user_question)
+            ai_message = get_ai_response(user_question, chat_history)
             status.update(label="답변 생성 완료!", state="complete", expanded=False)
         st.write(ai_message)
     # 여기서 다시 그려준다.
