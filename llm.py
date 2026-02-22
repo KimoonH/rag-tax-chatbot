@@ -7,6 +7,24 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
+def get_dictionary_chain(llm):
+    # [A] 사전 기반 질문 변환 (Query Transformation) 프롬프트
+    dictionary = ["사람을 나타내는 표현 -> 거주자"]
+    dictionary_prompt = ChatPromptTemplate.from_template(f"""
+        당신은 사용자의 질문에서 특정 표현을 사전에 따라 '전문 용어'로 교체하는 변환기입니다.
+        
+        [변환 규칙]
+        {dictionary}
+        
+        [지시사항]
+        1. 질문에서 "사람을 나타내는 표현"이라는 문구가 보이면 무조건 "거주자"로 바꾸세요.
+        2. "5천만원" 같은 숫자나 다른 상세 조건은 절대로 건드리지 마세요.
+        3. 설명 없이 오직 '변환된 문장'만 다시 출력하세요.
+
+        질문: {{question}}
+    """)
+    return dictionary_prompt | llm | StrOutputParser()
+
 def get_ai_response(user_question):
     # 1. 환경 변수 로드
     load_dotenv()
@@ -26,22 +44,9 @@ def get_ai_response(user_question):
 
     # 3. LLM 및 프롬프트 설정
     llm = ChatOllama(model="llama3.2")
-
-    # [A] 사전 기반 질문 변환 프롬프트
-    dictionary = ["사람을 나타내는 표현 -> 거주자"]
-    dictionary_prompt = ChatPromptTemplate.from_template(f"""
-        당신은 사용자의 질문에서 특정 표현을 사전에 따라 '전문 용어'로 교체하는 변환기입니다.
-        
-        [변환 규칙]
-        {dictionary}
-        
-        [지시사항]
-        1. 질문에서 "사람을 나타내는 표현"이라는 문구가 보이면 무조건 "거주자"로 바꾸세요.
-        2. "5천만원" 같은 숫자나 다른 상세 조건은 절대로 건드리지 마세요.
-        3. 설명 없이 오직 '변환된 문장'만 다시 출력하세요.
-
-        질문: {{question}}
-    """)
+    
+    # 변환 체인 가져오기
+    dictionary_chain = get_dictionary_chain(llm)
 
     # [B] 세무 전문가 페르소나 RAG 프롬프트
     custom_prompt = ChatPromptTemplate.from_template("""
@@ -61,8 +66,7 @@ def get_ai_response(user_question):
     """)
 
     # 4. LCEL 체인 구성 (Pipeline)
-    dictionary_chain = dictionary_prompt | llm | StrOutputParser()
-
+    
     def format_docs(docs):
         return "\n\n".join(doc.page_content for doc in docs)
 
