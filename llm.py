@@ -9,7 +9,8 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_classic.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import MessagesPlaceholder
+from langchain_core.prompts import MessagesPlaceholder, ChatPromptTemplate, FewShotChatMessagePromptTemplate
+from config import answer_examples
 
 def get_dictionary_chain(llm):
     # [A] 사전 기반 질문 변환 (Query Transformation) 프롬프트
@@ -77,9 +78,25 @@ def get_qa_chain(llm):
     [관련 법령/문서]: 
     {context}
     """
+    
+    # 예시 프롬프트 템플릿 정의
+    example_prompt = ChatPromptTemplate.from_messages(
+        [
+            ("human", "{input}"),
+            ("ai", "{answer}"),
+        ]
+    )
+
+    # Few-shot 프롬프트 템플릿 생성
+    few_shot_prompt = FewShotChatMessagePromptTemplate(
+        example_prompt=example_prompt,
+        examples=answer_examples,
+    )
+
     qa_prompt = ChatPromptTemplate.from_messages(
         [
             ("system", system_prompt),
+            few_shot_prompt, # Few-shot 예시 주입
             MessagesPlaceholder("chat_history"),
             ("human", "{input}"),
         ]
