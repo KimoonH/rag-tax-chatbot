@@ -25,6 +25,9 @@ def get_dictionary_chain(llm):
     """)
     return dictionary_prompt | llm | StrOutputParser()
 
+def get_llm(model_name="llama3.2"):
+    return ChatOllama(model=model_name)
+
 def get_ai_response(user_question):
     # 1. 환경 변수 로드
     load_dotenv()
@@ -43,7 +46,7 @@ def get_ai_response(user_question):
     )
 
     # 3. LLM 및 프롬프트 설정
-    llm = ChatOllama(model="llama3.2")
+    llm = get_llm()
     
     # 변환 체인 가져오기
     dictionary_chain = get_dictionary_chain(llm)
